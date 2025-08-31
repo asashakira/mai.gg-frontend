@@ -1,27 +1,25 @@
-import {
-    Box,
-    Button,
-    Card,
-    CardContent,
-    CardMedia,
-    Typography,
-} from '@mui/material'
+import {faAngleDown} from '@fortawesome/free-solid-svg-icons'
+import {FontAwesomeIcon} from '@fortawesome/react-fontawesome'
 import {useInfiniteQuery, useMutation} from '@tanstack/react-query'
+import {Link} from 'react-router-dom'
 
+import {Button} from '@/components/ui/button'
+import {Spinner} from '@/components/ui/spinner/spinner'
 import {Score, User} from '@/types/api'
+import {getScoreRank} from '@/utils/maimai'
 
 import {useUser} from '../api/get-user'
 import {fetchScores} from '../api/get-user-scores'
 import {updateUser} from '../api/update-user-page'
 
-export const UserPage = ({maiID}: {maiID: string}) => {
+export const UserPage = ({userID}: {userID: string}) => {
     const userQuery = useUser({
-        maiID,
+        userID,
     })
 
     const scoresQuery = useInfiniteQuery({
-        queryKey: ['scores', maiID],
-        queryFn: ({pageParam}) => fetchScores({pageParam, maiID}),
+        queryKey: ['scores', userID],
+        queryFn: ({pageParam}) => fetchScores({pageParam, userID}),
         initialPageParam: 0,
         getNextPageParam: lastPage =>
             lastPage.data.hasMore ? lastPage.data.nextOffset : undefined,
@@ -35,143 +33,250 @@ export const UserPage = ({maiID}: {maiID: string}) => {
         },
     })
 
-    if (userQuery.isLoading || scoresQuery.isLoading)
-        return <Box>Loading...</Box>
-    if (userQuery.error) return <Box>Error loading user data</Box>
-    if (scoresQuery.error) return <Box>Error loading user scores</Box>
+    if (userQuery.isLoading || scoresQuery.isLoading) {
+        return (
+            <div className="flex h-48 w-full items-center justify-center">
+                <Spinner size="lg" />
+            </div>
+        )
+    }
+    // if (userQuery.error) return <div>Error loading user data</div>
+    // if (scoresQuery.error) return <div>Error loading user scores</div>
 
     const user: User | undefined = userQuery?.data?.data
 
-    if (!user) return <Box>User Not Found</Box>
+    if (!user) return <UserNotFound />
+
+    const recentScores =
+        scoresQuery.data?.pages.flatMap(page => page.data.scores || []) || []
+
+    // Update Button
+    const lastScrapedAt = new Date(user.lastScrapedAt).getTime()
+    const now = new Date().getTime()
+    const updateCD = 5 * 1000 * 60 // 5 minutes
+    const updateAvailableAt = lastScrapedAt + updateCD
+    const disableUpdateButton =
+        now < updateAvailableAt || updateUserMutation.isPending
 
     const handleUpdateButton = () => {
-        updateUserMutation.mutate({userID: user.userID})
+        updateUserMutation.mutate({userID})
     }
 
+    const date = new Date(lastScrapedAt)
+    const lastUpdatedAt =
+        date.getFullYear() +
+        '/' +
+        String(date.getMonth() + 1).padStart(2, '0') +
+        '/' +
+        String(date.getDate()).padStart(2, '0') +
+        ' ' +
+        String(date.getHours()).padStart(2, '0') +
+        ':' +
+        String(date.getMinutes()).padStart(2, '0')
+
     return (
-        <Box sx={{m: 0}}>
-            <Box
-                sx={{
-                    display: 'flex',
-                    p: 2,
-                    mt: 2,
-                    mb: 2,
-                    borderRadius: '6px',
-                    border: '1px solid rgb(195, 209, 220)',
-                }}
-            >
+        <div className="w-full px-1 my-4">
+            {/* Profile section */}
+            <div className="flex">
                 {/* Profile Icon */}
-                <Box
-                    sx={{
-                        width: 100,
-                        height: 100,
-                        backgroundColor: 'gray',
-                        borderRadius: '6px',
-                    }}
-                >
-                    {/* TODO: Profile picture here */}
-                </Box>
+                <img
+                    src={user.profileImageUrl}
+                    alt={user.displayName}
+                    className="w-[100px] h-[100px] bg-gray-400 rounded-lg text-xs"
+                />
 
-                <Box
-                    sx={{
-                        ml: 2,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'space-between',
-                    }}
-                >
-                    {/* Info */}
-                    <Box>
-                        <Typography
-                            component="span"
-                            sx={{fontSize: '1.5rem', fontWeight: 'bold'}}
-                        >
-                            {user.gameName}
-                        </Typography>
-                        <Typography
-                            component="span"
-                            sx={{
-                                color: 'text.secondary',
-                                fontSize: '1.5rem',
-                                ml: 1,
-                            }}
-                        >
-                            #{user.tagLine}
-                        </Typography>
-                    </Box>
-
-                    {/* Buttons */}
-                    <Box>
+                {/* User Info */}
+                <div className="ml-4 flex flex-col gap-4">
+                    <div className="flex flex-col">
+                        <span className="text-xl font-bold">
+                            {user.displayName}
+                        </span>
+                        <span className="text-gray-500 text-xs">
+                            {user.userID}
+                        </span>
+                    </div>
+                    <div className="flex gap-2">
                         <Button
-                            variant="contained"
+                            size="small"
                             onClick={handleUpdateButton}
-                            disabled={updateUserMutation.isPending}
+                            isLoading={updateUserMutation.isPending}
+                            disabled={disableUpdateButton}
                         >
-                            Update
+                            {disableUpdateButton ? 'Updated' : 'Update'}
                         </Button>
-                    </Box>
-                </Box>
-            </Box>
+                        <span className="text-xs text-gray-500 self-end">
+                            最近のアップデート: {lastUpdatedAt}
+                        </span>
+                    </div>
+                </div>
+            </div>
 
-            <Box
-                sx={{
-                    display: 'flex',
-                    p: 2,
-                    mt: 2,
-                    mb: 2,
-                    borderRadius: '6px',
-                    border: '1px solid rgb(195, 209, 220)',
-                }}
-            >
-                <Box>
-                    <Typography>{user.totalPlayCount}</Typography>
-                    <Typography>{user.seasonPlayCount}</Typography>
-                </Box>
-            </Box>
+            {/* Stats Section */}
+            <div className="flex justify-around items-center p-4 my-4 bg-slate-800 rounded border border-gray-700 shadow-md">
+                <div className="text-center">
+                    <div className="text-2xl font-bold">{user.rating}</div>
+                    <div className="text-sm text-gray-400">Rating</div>
+                </div>
 
-            {scoresQuery.data?.pages.map(page =>
-                page.data.scores.map((score: Score) => (
-                    <ScoreCard key={score.scoreID} score={score} />
-                )),
-            )}
+                {/* Divider */}
+                <div className="w-px h-10 bg-gray-600 mx-4" />
+
+                <div className="text-center">
+                    <div className="text-2xl font-bold">
+                        {user.totalPlayCount}
+                    </div>
+                    <div className="text-sm text-gray-400">Total Plays</div>
+                </div>
+
+                {/* Divider */}
+                <div className="w-px h-10 bg-gray-600 mx-4" />
+
+                <div className="text-center">
+                    <div className="text-2xl font-bold">
+                        {user.seasonPlayCount}
+                    </div>
+                    <div className="text-sm text-gray-400">Season Plays</div>
+                </div>
+            </div>
+
+            <RecentScores scores={recentScores} />
+
+            {/* show more button */}
             {scoresQuery.hasNextPage && !scoresQuery.isFetching && (
-                <Button
-                    onClick={() => scoresQuery.fetchNextPage()}
-                    disabled={scoresQuery.isFetchingNextPage}
-                >
-                    SHOW MORE
-                </Button>
+                <div className="text-center">
+                    <Button
+                        size="small"
+                        onClick={() => scoresQuery.fetchNextPage()}
+                        disabled={scoresQuery.isFetchingNextPage}
+                    >
+                        <FontAwesomeIcon icon={faAngleDown} className="mx-3" />
+                        SHOW MORE
+                        <FontAwesomeIcon icon={faAngleDown} className="mx-3" />
+                    </Button>
+                </div>
             )}
+        </div>
+    )
+}
 
-            {scoresQuery.isFetching && <Box>Fetching more data...</Box>}
-        </Box>
+const RecentScores = ({scores}: {scores: Score[]}) => {
+    return (
+        <>
+            <div className="mb-2">
+                <span className="text-white underline decoration-lime-400 font-semibold">
+                    Recent
+                </span>
+            </div>
+
+            {scores.map((score: Score, index) => {
+                const prevScore = scores[index - 1]
+                const prevDate = prevScore
+                    ? new Date(prevScore.playedAt).toDateString()
+                    : null
+                const currentDate = new Date(score.playedAt).toDateString()
+                const showDate = currentDate !== prevDate
+                return (
+                    <div key={score.id}>
+                        {showDate && (
+                            <div className="my-4 text-sm text-gray-400">
+                                {currentDate}
+                            </div>
+                        )}
+                        <ScoreCard score={score} />
+                    </div>
+                )
+            })}
+        </>
     )
 }
 
 const ScoreCard = ({score}: {score: Score}) => {
     return (
-        <Card
-            variant="outlined"
-            sx={{boxShadow: 2, display: 'flex', m: 0, mb: 2, minWidth: 900}}
-        >
-            <CardMedia
-                sx={{height: 150, width: 150}}
-                image={score.imageUrl}
-                title={score.title}
+        <div className="w-full flex bg-slate-800 text-white rounded border border-zinc-700 p-2 mb-4">
+            {/* Image */}
+            <img
+                src={`${import.meta.env.VITE_S3_BUCKET_URL}songs/${score.imageUrl}`}
+                alt={score.title}
+                className="w-24 h-24 object-cover rounded-lg"
             />
-            <CardContent
-                sx={{display: 'flex', flex: 1, justifyContent: 'space-between'}}
-            >
-                <Box>
-                    <Typography>{score.title}</Typography>
-                    <Typography
-                        sx={{color: 'text.secondary', fontSize: '0.75rem'}}
-                    >
+
+            {/* Main Info */}
+            <div className="flex flex-col h-24 justify-between ml-4 min-w-0">
+                <div>
+                    <div className="text-sm whitespace-nowrap truncate">
+                        <Link
+                            to={`/songs/${score.songID}?v=${score.type}&d=${score.difficulty}`}
+                            className="hover:underline"
+                        >
+                            {score.title}
+                        </Link>
+                    </div>
+                    <div className="text-xs text-zinc-400 whitespace-nowrap truncate overflow-hidden">
                         by {score.artist}
-                    </Typography>
-                </Box>
-                <Typography component="div">{score.accuracy}</Typography>
-            </CardContent>
-        </Card>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-4 mt-2">
+                    {/* Rank */}
+                    <ScoreRankBadge accuracy={score.accuracy} />
+
+                    {/* Accuracy */}
+                    <div className="text-lime-400 font-semibold text-lg sm:text-xl">
+                        {score.accuracy}
+                    </div>
+                </div>
+            </div>
+        </div>
     )
 }
+
+type ScoreRankBadgeProps = {
+    accuracy: string
+}
+
+const rankColors: Record<string, string> = {
+    'SSS+': 'bg-yellow-400 text-black',
+    SSS: 'bg-yellow-300 text-black',
+    'SS+': 'bg-orange-400 text-white',
+    SS: 'bg-orange-300 text-black',
+    'S+': 'bg-red-400 text-white',
+    S: 'bg-red-300 text-black',
+    AAA: 'bg-purple-500 text-white',
+    AA: 'bg-purple-400 text-white',
+    A: 'bg-blue-500 text-white',
+    BB: 'bg-blue-400 text-white',
+    B: 'bg-green-400 text-black',
+    C: 'bg-lime-400 text-black',
+    D: 'bg-gray-400 text-white',
+    Invalid: 'bg-black text-white',
+}
+
+export const ScoreRankBadge = ({accuracy}: ScoreRankBadgeProps) => {
+    const rank = getScoreRank(accuracy)
+    const color = rankColors[rank] || 'bg-black text-white'
+
+    return (
+        <div
+            className={`w-15 h-8 inline-flex items-center justify-center text-xs font-bold rounded-md ${color}`}
+        >
+            {rank}
+        </div>
+    )
+}
+
+const UserNotFound = () => {
+    return (
+        <div className="mt-20 bg-gray-900 flex flex-col items-center justify-center text-white text-center px-4">
+            <h1 className="text-3xl font-bold mb-4">
+                ユーザーが見つかりません
+            </h1>
+            <p className="text-gray-300 mb-6">
+                入力されたUser IDに一致するユーザーが存在しませんでした。
+                <br />
+                IDを確認して、もう一度お試しください。
+            </p>
+        </div>
+    )
+}
+
+export default UserNotFound

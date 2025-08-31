@@ -3,11 +3,15 @@ import {BrowserRouter, Route, Routes} from 'react-router-dom'
 import {paths} from '@/config/paths'
 import {ProtectedRoute} from '@/lib/auth'
 
+import AboutRoute from './routes/about'
 import LoginRoute from './routes/auth/login'
+import LogoutRoute from './routes/auth/logout'
 import RegisterRoute from './routes/auth/register'
 import LandingRoute from './routes/landing'
 import NotFoundRoute from './routes/not-found'
-import ProfileRoute from './routes/profile'
+import SettingsRoute from './routes/settings'
+import SongRoute from './routes/songs/song'
+import SongsRoute from './routes/songs/songs'
 import UserRoute from './routes/users'
 
 export const AppRouter = () => {
@@ -15,17 +19,24 @@ export const AppRouter = () => {
         <BrowserRouter>
             <Routes>
                 <Route path={paths.home.path} element={<LandingRoute />} />
+                <Route path={paths.about.path} element={<AboutRoute />} />
                 <Route
                     path={paths.auth.register.path}
                     element={<RegisterRoute />}
                 />
                 <Route path={paths.auth.login.path} element={<LoginRoute />} />
-                <Route path={paths.users.path} element={<UserRoute />} />
                 <Route
-                    path={paths.profile.path}
+                    path={paths.auth.logout.path}
+                    element={<LogoutRoute />}
+                />
+                <Route path={paths.users.path} element={<UserRoute />} />
+                <Route path={paths.songs.path} element={<SongsRoute />} />
+                <Route path={paths.song.path} element={<SongRoute />} />
+                <Route
+                    path={paths.settings.path}
                     element={
                         <ProtectedRoute>
-                            <ProfileRoute />
+                            <SettingsRoute />
                         </ProtectedRoute>
                     }
                 />

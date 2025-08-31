@@ -3,8 +3,7 @@
 // with the backend instead of manually writing them out
 
 export type BaseEntity = {
-    createdAt: number
-    updatedAt: number
+    id: string
 }
 
 export type Entity<T> = {
@@ -13,16 +12,22 @@ export type Entity<T> = {
 
 export type User = Entity<{
     userID: string
-    gameName: string
-    tagLine: string
+    displayName: string
+    lastPlayedAt: string
+    lastScrapedAt: string
+    scrapeStatus: string
     rating: string
     seasonPlayCount: string
     totalPlayCount: string
+    bio: string
+    profileImageUrl: string
+    location: string
+    twitterID: string
 }>
 
 export type AuthUser = Entity<{
-    username: string
-    role: 'ADMIN' | 'USER'
+    userID: string
+    displayName: string
 }>
 
 export type AuthResponse = {
@@ -31,7 +36,6 @@ export type AuthResponse = {
 }
 
 export type Song = Entity<{
-    songID: string
     title: string
     artist: string
     genre: string
@@ -42,14 +46,20 @@ export type Song = Entity<{
     version: string
     releaseDate: string
     deleteDate: string
+    beatmaps: Beatmap[]
 }>
 
 export type Beatmap = Entity<{
-    beatmapID: string
-    difficulty: string
+    difficulty:
+        | 'basic'
+        | 'advanced'
+        | 'expert'
+        | 'master'
+        | 'remaster'
+        | 'utage'
     level: string
     internalLevel: number | null
-    type: string
+    type: 'std' | 'dx' | 'utage'
     totalNotes: number
     tap: number
     hold: number
@@ -68,8 +78,10 @@ export type ScoresResponse = {
 }
 
 export type Score = Entity<{
-    scoreID: string
-    userID: string
+    id: string
+    beatmapID: string
+    songID: string
+    userUuid: string
     accuracy: string
     maxCombo: number
     dxScore: number
@@ -101,5 +113,13 @@ export type Score = Entity<{
     fast: number
     late: number
     playedAt: string
-}> &
-    Beatmap
+    title: string
+    artist: string
+    genre: string
+    imageUrl: string
+    version: string
+    difficulty: string
+    level: string
+    internalLevel: number
+    type: string
+}>
